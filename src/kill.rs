@@ -1,11 +1,46 @@
-use nom::{
-    bytes::complete::tag,
-    character::complete::{char, newline},
-};
-use nom::{bytes::complete::take_until, character::complete::alphanumeric1, sequence::delimited};
+use nom::bytes::complete::take_until;
+use nom::{bytes::complete::tag, character::complete::newline};
 
-#[derive(PartialEq, Debug)]
-struct Kill {
+use crate::time::manytime1;
+
+// means of death
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+enum MeansOfDeath {
+    MOD_UNKNOWN,
+    MOD_SHOTGUN,
+    MOD_GAUNTLET,
+    MOD_MACHINEGUN,
+    MOD_GRENADE,
+    MOD_GRENADE_SPLASH,
+    MOD_ROCKET,
+    MOD_ROCKET_SPLASH,
+    MOD_PLASMA,
+    MOD_PLASMA_SPLASH,
+    MOD_RAILGUN,
+    MOD_LIGHTNING,
+    MOD_BFG,
+    MOD_BFG_SPLASH,
+    MOD_WATER,
+    MOD_SLIME,
+    MOD_LAVA,
+    MOD_CRUSH,
+    MOD_TELEFRAG,
+    MOD_FALLING,
+    MOD_SUICIDE,
+    MOD_TARGET_LASER,
+    MOD_TRIGGER_HURT,
+    MISSIONPACK,
+    MOD_NAIL,
+    MOD_CHAINGUN,
+    MOD_PROXIMITY_MINE,
+    MOD_KAMIKAZE,
+    MOD_JUICED,
+    MOD_GRAPPLE,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Kill {
     killer: String,
     victim: String,
     weapon: String,
@@ -20,8 +55,9 @@ impl Kill {
         }
     }
 
-    fn kill_parser(i: &str) -> nom::IResult<&str, Kill> {
-        let (i, _) = chew("Kill: ")(i)?;
+    pub fn parse_kill(i: &str) -> nom::IResult<&str, Kill> {
+        let (i, _) = manytime1(i)?;
+        let (i, _) = tag("Kill: ")(i)?;
         let (i, _) = chew(": ")(i)?;
         let (i, killer) = take_until(" ")(i)?;
         let (i, _) = tag(" killed ")(i)?;
@@ -40,11 +76,11 @@ impl Kill {
     }
 }
 
-fn chew<'a>(t: &'a str) -> impl FnMut(&'a str) -> nom::IResult<&'a str, &'a str> {
+pub fn chew<'a>(t: &'a str) -> impl FnMut(&'a str) -> nom::IResult<&'a str, &'a str> {
     move |i: &str| {
-        let (i, _) = take_until(t)(i)?;
+        let (i, r) = take_until(t)(i)?;
         let (i, _) = tag(t)(i)?;
-        Ok((i, i))
+        Ok((i, r))
     }
 }
 
@@ -60,6 +96,6 @@ mod test {
             "Isgalamido".to_string(),
             "MOD_TRIGGER_HURT".to_string(),
         );
-        assert_eq!(Kill::kill_parser(i), Ok(("", answer)));
+        assert_eq!(Kill::parse_kill(i), Ok(("", answer)));
     }
 }
