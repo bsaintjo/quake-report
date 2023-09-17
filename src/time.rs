@@ -1,18 +1,10 @@
-use nom::combinator::recognize;
-
-use nom::bytes::complete::tag;
-
-use nom::character::complete::digit1;
-
-use nom::branch::alt;
-
-use nom::multi::many1;
-
-use nom::character::complete::char;
-
-use nom::multi::many0;
-
-use nom;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{char, digit1},
+    combinator::recognize,
+    multi::{many0, many1},
+};
 
 /// Each line starts with a timestamp. This timestamp may be preceded by a space.
 fn time(i: &str) -> nom::IResult<&str, ()> {
@@ -23,7 +15,7 @@ fn time(i: &str) -> nom::IResult<&str, ()> {
 
 /// Parses timestamp from line, can also deal with error line with
 /// two or more timestamps.
-pub fn manytime1(i: &str) -> nom::IResult<&str, &str> {
+pub(crate) fn manytime1(i: &str) -> nom::IResult<&str, &str> {
     let (i, r) = recognize(many1(time))(i)?;
     let (i, _) = many0(char(' '))(i)?;
     Ok((i, r))
@@ -36,6 +28,6 @@ mod test {
     #[test]
     fn test_manytime() {
         let i = "26  0:00";
-        assert_eq!(manytime1(i), Ok(("", "")));
+        assert_eq!(manytime1(i), Ok(("", i)));
     }
 }

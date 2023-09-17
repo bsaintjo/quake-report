@@ -1,49 +1,15 @@
-use nom::bytes::complete::take_until;
-use nom::{bytes::complete::tag, character::complete::newline};
+use nom::{
+    bytes::complete::{tag, take_until},
+    character::complete::newline,
+};
 
 use crate::time::manytime1;
 
-// means of death
-#[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
-enum MeansOfDeath {
-    MOD_UNKNOWN,
-    MOD_SHOTGUN,
-    MOD_GAUNTLET,
-    MOD_MACHINEGUN,
-    MOD_GRENADE,
-    MOD_GRENADE_SPLASH,
-    MOD_ROCKET,
-    MOD_ROCKET_SPLASH,
-    MOD_PLASMA,
-    MOD_PLASMA_SPLASH,
-    MOD_RAILGUN,
-    MOD_LIGHTNING,
-    MOD_BFG,
-    MOD_BFG_SPLASH,
-    MOD_WATER,
-    MOD_SLIME,
-    MOD_LAVA,
-    MOD_CRUSH,
-    MOD_TELEFRAG,
-    MOD_FALLING,
-    MOD_SUICIDE,
-    MOD_TARGET_LASER,
-    MOD_TRIGGER_HURT,
-    MISSIONPACK,
-    MOD_NAIL,
-    MOD_CHAINGUN,
-    MOD_PROXIMITY_MINE,
-    MOD_KAMIKAZE,
-    MOD_JUICED,
-    MOD_GRAPPLE,
-}
-
 #[derive(PartialEq, Debug, Clone)]
 pub struct Kill {
-    killer: String,
-    victim: String,
-    weapon: String,
+    pub killer: String,
+    pub victim: String,
+    pub weapon: String,
 }
 
 impl Kill {
@@ -55,7 +21,17 @@ impl Kill {
         }
     }
 
-    pub fn parse_kill(i: &str) -> nom::IResult<&str, Kill> {
+    pub fn killer_is_world(&self) -> bool {
+        self.killer == "<world>"
+    }
+
+    /// A player can kill themselves with rocket launcher, for example.
+    /// This is recorded differently than a player being killed by <world>
+    pub fn killer_is_victim(&self) -> bool {
+        self.killer == self.victim
+    }
+
+    pub(crate) fn parse_kill(i: &str) -> nom::IResult<&str, Kill> {
         let (i, _) = manytime1(i)?;
         let (i, _) = tag("Kill: ")(i)?;
         let (i, _) = chew(": ")(i)?;
@@ -67,16 +43,20 @@ impl Kill {
         let (i, _) = newline(i)?;
         Ok((
             i,
-            Kill {
-                killer: killer.to_string(),
-                victim: victim.to_string(),
-                weapon: weapon.to_string(),
-            },
+            Kill::new(
+                killer.to_string(),
+                victim.to_string(),
+                weapon.to_string(),
+            ),
         ))
     }
 }
 
-pub fn chew<'a>(t: &'a str) -> impl FnMut(&'a str) -> nom::IResult<&'a str, &'a str> {
+/// Take characters from a string until the tag t is found.
+/// A convience function to skip over text.
+pub fn chew<'a>(
+    t: &'a str,
+) -> impl FnMut(&'a str) -> nom::IResult<&'a str, &'a str> {
     move |i: &str| {
         let (i, r) = take_until(t)(i)?;
         let (i, _) = tag(t)(i)?;

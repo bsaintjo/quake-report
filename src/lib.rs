@@ -1,7 +1,3 @@
-mod kill;
-mod game;
+pub mod game;
+pub mod kill;
 mod time;
-
-fn main() {
-    println!("Hello, world!");
-}

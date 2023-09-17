@@ -1,16 +1,19 @@
 use nom::{
-    branch::alt, bytes::complete::{take_until, take_while1}, character::complete::{char}, combinator::{opt, eof}, Parser,
-};
-use nom::{
-    bytes::complete::tag,
-    combinator::not,
+    branch::alt,
+    bytes::complete::{tag, take_until, take_while1},
+    character::complete::char,
+    combinator::{eof, not, opt},
     multi::{many0, many1},
+    Parser,
 };
 
-use crate::{kill::{chew, Kill}, time};
+use crate::{
+    kill::{chew, Kill},
+    time,
+};
 
 #[derive(PartialEq, Debug, Clone)]
-enum GameLog {
+pub enum GameLog {
     Kill(Kill),
     Ignored,
 }
@@ -28,7 +31,7 @@ fn parse_ignored(i: &str) -> nom::IResult<&str, GameLog> {
 }
 
 #[derive(PartialEq, Debug)]
-struct Game {
+pub struct Game {
     logs: Vec<GameLog>,
 }
 
@@ -39,9 +42,13 @@ impl Game {
         let (i, _) = parse_game_end(i)?;
         Ok((i, Game { logs }))
     }
+
+    pub fn logs(&self) -> &[GameLog] {
+        self.logs.as_ref()
+    }
 }
 
-fn parse_games(i: &str) -> nom::IResult<&str, Vec<Game>> {
+pub fn parse_games(i: &str) -> nom::IResult<&str, Vec<Game>> {
     let (i, _) = opt(parse_shutdown_line)(i)?;
     many1(Game::parse_game)(i)
 }
@@ -60,6 +67,8 @@ fn parse_shutdown(i: &str) -> nom::IResult<&str, ()> {
     Ok((i, ()))
 }
 
+/// A shutdown line is a line that starts with a timestamp, followed by
+/// several dashes, and then a newline.
 fn parse_shutdown_line(i: &str) -> nom::IResult<&str, ()> {
     let (i, _) = time::manytime1(i)?;
     let (i, _) = take_while1(|c| c == '-')(i)?;
@@ -67,6 +76,10 @@ fn parse_shutdown_line(i: &str) -> nom::IResult<&str, ()> {
     Ok((i, ()))
 }
 
+/// During a shutdown you can have up to two shutdown lines. Normal shutdowns have two,
+/// The cases where you have one shutdown line is either
+/// A) something crashed and you have an overwrite of the log file
+/// B) or at the end of a log file, you will only have one.
 fn parse_shutdown_line1(i: &str) -> nom::IResult<&str, ()> {
     let (i, _) = parse_shutdown_line(i)?;
     let (i, _) = opt(parse_shutdown_line)(i)?;
@@ -95,7 +108,7 @@ mod test_game {
         let i = r"12:13 ShutdownGame:
  12:13 ------------------------------------------------------------
  12:13 ------------------------------------------------------------
-        ";
+";
         assert_eq!(parse_shutdown(i), Ok(("", ())));
     }
 
