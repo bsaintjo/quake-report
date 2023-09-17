@@ -1,18 +1,10 @@
-use nom::combinator::recognize;
-
-use nom::bytes::complete::tag;
-
-use nom::character::complete::digit1;
-
 use nom::branch::alt;
-
-use nom::multi::many1;
-
-use nom::character::complete::char;
-
+use nom::bytes::streaming::tag;
+use nom::character::streaming::char;
+use nom::character::streaming::digit1;
+use nom::combinator::recognize;
 use nom::multi::many0;
-
-use nom;
+use nom::multi::many1;
 
 /// Each line starts with a timestamp. This timestamp may be preceded by a space.
 fn time(i: &str) -> nom::IResult<&str, ()> {

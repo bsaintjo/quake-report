@@ -1,13 +1,21 @@
 use nom::{
-    branch::alt, bytes::complete::{take_until, take_while1}, character::complete::{char}, combinator::{opt, eof}, Parser,
+    branch::alt,
+    bytes::streaming::{take_until, take_while1},
+    character::streaming::char,
+    combinator::{complete, eof, opt},
+    error::{ErrorKind, ParseError},
+    Err, Needed, Parser,
 };
 use nom::{
-    bytes::complete::tag,
+    bytes::streaming::tag,
     combinator::not,
     multi::{many0, many1},
 };
 
-use crate::{kill::{chew, Kill}, time};
+use crate::{
+    kill::{chew, Kill},
+    time,
+};
 
 #[derive(PartialEq, Debug, Clone)]
 enum GameLog {

@@ -1,5 +1,5 @@
-use nom::bytes::complete::take_until;
-use nom::{bytes::complete::tag, character::complete::newline};
+use nom::bytes::streaming::take_until;
+use nom::{bytes::streaming::tag, character::streaming::newline};
 
 use crate::time::manytime1;
 
