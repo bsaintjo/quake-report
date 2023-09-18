@@ -6,7 +6,8 @@ use nom::{
     multi::{many0, many1},
 };
 
-/// Each line starts with a timestamp. This timestamp may be preceded by a space.
+/// Each line starts with a timestamp. This timestamp may be preceded by a
+/// space.
 fn time(i: &str) -> nom::IResult<&str, ()> {
     let (i, _) = many0(char(' '))(i)?;
     let (i, _) = many1(alt((digit1, tag(":"))))(i)?;

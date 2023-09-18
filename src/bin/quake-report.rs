@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
+use clap::Parser;
 use quake_report::game::{parse_games, Game, GameLog};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 
@@ -12,7 +13,7 @@ struct GameReport {
 }
 
 impl GameReport {
-    fn from_game(idx: usize, game: Game) -> Self {
+    fn from_game(idx: usize, game: &Game) -> Self {
         let mut total_kills = 0;
         let mut kills = HashMap::new();
         let mut kills_by_means = HashMap::new();
@@ -58,14 +59,23 @@ impl Serialize for GameReport {
     }
 }
 
-fn main() {
-    let filename = "extra/qgames.log";
-    let file = std::fs::read_to_string(filename).unwrap();
-    let games = parse_games(&file).unwrap().1;
+/// Convert a Quake 3 Arena log file into a JSON report.
+#[derive(Parser)]
+struct Args {
+    /// Path to the Quake 3 Area log file
+    input: PathBuf,
+}
+
+fn main() -> eyre::Result<()> {
+    let args = Args::parse();
+    let file = std::fs::read_to_string(args.input)?;
+    let games = parse_games(&file)
+        .ok_or_else(|| eyre::eyre!("Failed to parse log file"))?;
     let reports: Vec<_> = games
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(idx, game)| GameReport::from_game(idx, game))
         .collect();
-    println!("{}", serde_json::to_string_pretty(&reports).unwrap());
+    println!("{}", serde_json::to_string_pretty(&reports)?);
+    Ok(())
 }

@@ -7,27 +7,28 @@ use nom::{
     Parser,
 };
 
-use crate::{
-    kill::{chew, Kill},
-    time,
-};
+use crate::{chew, kill::Kill, time};
 
+/// Represents the kinds of lines that can be found in a game log.
+/// We only care about kills, so we ignore everything else.
 #[derive(PartialEq, Debug, Clone)]
 pub enum GameLog {
     Kill(Kill),
     Ignored,
 }
 
-fn parse_game_log(i: &str) -> nom::IResult<&str, GameLog> {
-    alt((Kill::parse_kill.map(GameLog::Kill), parse_ignored))(i)
-}
+impl GameLog {
+    fn parse_game_log(i: &str) -> nom::IResult<&str, GameLog> {
+        alt((Kill::parse_kill.map(GameLog::Kill), GameLog::parse_ignored))(i)
+    }
 
-fn parse_ignored(i: &str) -> nom::IResult<&str, GameLog> {
-    let (i, _) = time::manytime1(i)?;
-    let (i, _) = not(tag("ShutdownGame:\n").or(tag("-")))(i)?;
-    let (i, _) = take_until("\n")(i)?;
-    let (i, _) = char('\n')(i)?;
-    Ok((i, GameLog::Ignored))
+    fn parse_ignored(i: &str) -> nom::IResult<&str, GameLog> {
+        let (i, _) = time::manytime1(i)?;
+        let (i, _) = not(tag("ShutdownGame:\n").or(tag("-")))(i)?;
+        let (i, _) = take_until("\n")(i)?;
+        let (i, _) = char('\n')(i)?;
+        Ok((i, GameLog::Ignored))
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -38,7 +39,7 @@ pub struct Game {
 impl Game {
     fn parse_game(i: &str) -> nom::IResult<&str, Self> {
         let (i, _) = parse_game_start(i)?;
-        let (i, logs) = many0(parse_game_log)(i)?;
+        let (i, logs) = many0(GameLog::parse_game_log)(i)?;
         let (i, _) = parse_game_end(i)?;
         Ok((i, Game { logs }))
     }
@@ -48,11 +49,24 @@ impl Game {
     }
 }
 
-pub fn parse_games(i: &str) -> nom::IResult<&str, Vec<Game>> {
-    let (i, _) = opt(parse_shutdown_line)(i)?;
-    many1(Game::parse_game)(i)
+/// Parse games from quake log file. If parse fails, return None.
+pub fn parse_games(i: &str) -> Option<Vec<Game>> {
+    match parse_games_inner(i) {
+        Ok((_, games)) => Some(games),
+        Err(_) => None,
+    }
 }
 
+/// Internal function so we don't export nom types
+pub fn parse_games_inner(i: &str) -> nom::IResult<&str, Vec<Game>> {
+    let (i, _) = opt(parse_shutdown_line)(i)?;
+    let (i, games) = many1(Game::parse_game)(i)?;
+    Ok((i, games))
+}
+
+/// Start of every game line is a timestamp, followed by "InitGame: " then
+/// a whole bunch of metadata, then newline. We don't care about the metadata,
+/// so we just skip it until the newline.
 fn parse_game_start(i: &str) -> nom::IResult<&str, ()> {
     let (i, _) = time::manytime1(i)?;
     let (i, _) = tag("InitGame: ")(i)?;
@@ -76,9 +90,9 @@ fn parse_shutdown_line(i: &str) -> nom::IResult<&str, ()> {
     Ok((i, ()))
 }
 
-/// During a shutdown you can have up to two shutdown lines. Normal shutdowns have two,
-/// The cases where you have one shutdown line is either
-/// A) something crashed and you have an overwrite of the log file
+/// During a shutdown you can have up to two shutdown lines. Normal shutdowns
+/// have two, The cases where you have one shutdown line is either
+/// A something crashed and you have an overwrite of the log file
 /// B) or at the end of a log file, you will only have one.
 fn parse_shutdown_line1(i: &str) -> nom::IResult<&str, ()> {
     let (i, _) = parse_shutdown_line(i)?;
@@ -126,7 +140,7 @@ mod test_game {
 20:37 ------------------------------------------------------------
 ";
         assert_eq!(
-            parse_games(i),
+            parse_games_inner(i),
             Ok((
                 "",
                 vec![Game {
@@ -139,7 +153,7 @@ mod test_game {
     #[test]
     fn test_full() {
         let i = include_str!("../extra/qgames.log");
-        let (_i, games) = parse_games(i).unwrap();
+        let (_i, games) = parse_games_inner(i).unwrap();
         assert_eq!(games.len(), 21);
     }
 }
